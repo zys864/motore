@@ -30,7 +30,7 @@ pub trait Service<Cx, Request> {
     type Error;
 
     /// The future response value.
-    type Future<'cx>: Future<Output = Result<Self::Response, Self::Error>>  + 'cx
+    type Future<'cx>: Future<Output = Result<Self::Response, Self::Error>> + Send + 'cx
     where
         Cx: 'cx,
         Self: 'cx;
@@ -55,7 +55,7 @@ pub struct Timeout<S> {
 impl<Cx, Req, S> Service<Cx, Req> for Timeout<S>
 where
     Req: 'static + Send,
-    S: Service<Cx, Req> + 'static + Send,
+    S: Service<Cx, Req> + 'static + Send + Sync,
     Cx: 'static + Send,
     S::Error: Send + Sync + Into<BoxError>,
 {
@@ -63,9 +63,9 @@ where
 
     type Error = BoxError;
 
-    type Future<'cx> = impl Future<Output = Result<S::Response, Self::Error>> + 'cx;
+    type Future<'cx> = impl Future<Output = Result<S::Response, Self::Error>> + Send + 'cx;
 
-    fn call<'cx, 's>(&'s mut self, cx: &'cx mut Cx, req: Req) -> Self::Future<'cx>
+    fn call<'cx, 's>(&'s self, cx: &'cx mut Cx, req: Req) -> Self::Future<'cx>
     where
         's: 'cx,
     {
